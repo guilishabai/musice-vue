@@ -24,12 +24,14 @@
         <div class="bottom">
           <div class="progress-wrapper">
             <span class="time time-l">{{format(currentTime)}}</span>
-            <div class="progress-bar-wrapper"></div>
+            <div class="progress-bar-wrapper">
+              <progress-bar :percent='percent' @percentChange="onProgressBarChange"></progress-bar>
+            </div>
             <span class="time time-r">{{format(currentSong.duration)}}</span>
           </div>
           <div class="operators">
-            <div class="icon i-left">
-              <i class="icon-sequence"></i>
+            <div class="icon i-left" @click="changeMode">
+              <i :class="iconMode"></i>
             </div>
             <div class="icon i-left" :class="disableCls">
               <i class="icon-prev" @click="prev"></i>
@@ -58,7 +60,9 @@
         </div>
         <div class="control"></div>
         <div class="control">
-          <i :class="miniIcon" @click.stop="togglePlaying"></i>
+          <progress-circle :radius="radius" :percent="percent">
+            <i :class="miniIcon" @click.stop="togglePlaying" class="icon-mini"></i>
+          </progress-circle>
         </div>
         <div class="control">
           <i class="icon-playlist"></i>
@@ -72,12 +76,20 @@
 import {mapGetters, mapMutations} from 'vuex'
 import animations from 'create-keyframe-animation'
 import {prefixStyle} from 'common/js/dom'
+import ProgressBar from 'base/progress-bar/progress-bar'
+import ProgressCircle from 'base/progress-circle/progress-circle'
+import {playMode} from 'common/js/config'
 const transform = prefixStyle('transform')
 export default {
+  components: {
+    ProgressBar,
+    ProgressCircle
+  },
   data() {
     return {
       songReady: false,
-      currentTime: 0
+      currentTime: 0,
+      radius: 32
     }
   },
   computed: {
@@ -98,8 +110,15 @@ export default {
       'playlist',
       'currentSong',
       'playing',
-      'currentIndex'
-    ])
+      'currentIndex',
+      'mode'
+    ]),
+    percent() {
+      return this.currentTime / this.currentSong.duration
+    },
+    iconMode() {
+      return this.mode === playMode.sequence ? 'icon-sequence' : this.mode === playMode.loop ? 'icon-loop' : 'icon-random'
+    }
   },
   methods: {
     _pad(num, n = 2) {
@@ -165,7 +184,8 @@ export default {
     ...mapMutations({
       setFullScreen: 'SET_FULL_SCREEN',
       setPlayingState: 'SET_PLAYING_STATE',
-      setCurrentIndex: 'SET_CURRENT_INDEX'
+      setCurrentIndex: 'SET_CURRENT_INDEX',
+      setPlayMode: 'SET_PLAY_MODE'
     }),
     enter(el, done) {
       const {x, y, scale} = this._getPosAndScale()
@@ -214,6 +234,16 @@ export default {
       const x = -(window.innerWidth / 2 - paddingLeft)
       const y = window.innerHeight - paddingTop - width / 2 - paddingBottom
       return {x, y, scale}
+    },
+    onProgressBarChange(percent) {
+      this.$refs.audio.currentTime = this.currentSong.duration * percent
+      if (!this.playing) {
+        this.togglePlaying()
+      }
+    },
+    changeMode() {
+      const mode = (this.mode + 1) % 3
+      this.setPlayMode(mode)
     }
   },
   watch: {
