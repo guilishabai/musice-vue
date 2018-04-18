@@ -20,6 +20,13 @@
               </div>
             </div>
           </div>
+          <div class="middle-r" ref="lyricList">
+            <div class="lyric-wrapper">
+              <div v-if="false">
+                <p ref="lyricLine" class="text"></p>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="bottom">
           <div class="progress-wrapper">
@@ -69,7 +76,7 @@
         </div>
       </div>
     </transition>
-    <audio  @timeupdate="updateTime" :src="currentSong.url" ref="audio" @canplay="ready" @error="error"></audio>
+    <audio  @timeupdate="updateTime" :src="currentSong.url" ref="audio" @canplay="ready" @error="error" @ended="end"></audio>
   </div>
 </template>
 <script>
@@ -79,6 +86,7 @@ import {prefixStyle} from 'common/js/dom'
 import ProgressBar from 'base/progress-bar/progress-bar'
 import ProgressCircle from 'base/progress-circle/progress-circle'
 import {playMode} from 'common/js/config'
+import {shuffle} from 'common/js/util'
 const transform = prefixStyle('transform')
 export default {
   components: {
@@ -111,7 +119,8 @@ export default {
       'currentSong',
       'playing',
       'currentIndex',
-      'mode'
+      'mode',
+      'sequenceList'
     ]),
     percent() {
       return this.currentTime / this.currentSong.duration
@@ -168,7 +177,7 @@ export default {
       this.songReady = false
       let index = this.currentIndex - 1
       if (index === -1) {
-        index = this.playlist.length -1
+        index = this.playlist.length - 1
       }
       this.setCurrentIndex(index)
       if (!this.playing) {
@@ -185,7 +194,8 @@ export default {
       setFullScreen: 'SET_FULL_SCREEN',
       setPlayingState: 'SET_PLAYING_STATE',
       setCurrentIndex: 'SET_CURRENT_INDEX',
-      setPlayMode: 'SET_PLAY_MODE'
+      setPlayMode: 'SET_PLAY_MODE',
+      setPlaylist: 'SET_PLAYLIST'
     }),
     enter(el, done) {
       const {x, y, scale} = this._getPosAndScale()
@@ -244,10 +254,38 @@ export default {
     changeMode() {
       const mode = (this.mode + 1) % 3
       this.setPlayMode(mode)
+      let list = null
+      if (mode === playMode.random) {
+        list = shuffle(this.sequenceList)
+      } else {
+        list = this.sequenceList
+      }
+      this.resetCurrentIndex(list)
+      this.setPlaylist(list)
+    },
+    resetCurrentIndex(list) {
+      let index = list.findIndex((item) => {
+        return item.id === this.currentSong.id
+      })
+      this.setCurrentIndex(index)
+    },
+    end() {
+      if (this.mode === playMode.loop) {
+        this.loop()
+      } else {
+        this.next()
+      }
+    },
+    loop() {
+      this.$refs.audio.currentTime = 0
+      this.$refs.audio.play()
     }
   },
   watch: {
-    currentSong() {
+    currentSong(newSong, oldSong) {
+      if (newSong.id === oldSong.id) {
+        return
+      }
       this.$nextTick(() => {
         this.$refs.audio.play()
       })

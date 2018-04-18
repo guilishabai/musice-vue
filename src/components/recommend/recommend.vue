@@ -1,5 +1,5 @@
 <template>
-  <div class="recommend">
+  <div class="recommend" ref="recommend">
     <scroll ref="scroll" class="recommend-content" :data='disList'>
       <div>
         <div v-if="recommends.length" class="slider-wrapper">
@@ -40,7 +40,9 @@ import { ERR_OK } from 'api/config'
 import axios from 'axios'
 import Scroll from 'base/scroll/scroll'
 import Loading from 'base/loading/loading'
+import {playListMixin} from 'common/js/mixin'
 export default {
+  mixins: [playListMixin],
   created() {
     this._getRecommend()
     setTimeout(() => {
@@ -71,6 +73,11 @@ export default {
       axios.get('static/getDiscList.txt').then(res => {
         this.disList = res.data.data.list
       })
+    },
+    handlePlayList(playlist) {
+      const bottom = playlist.length > 0 ? '60px' : ''
+      this.$refs.recommend.style.bottom = bottom
+      this.$refs.scroll.refresh()
     }
   },
   components: {
